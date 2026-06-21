@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { FilterSidebar, type GenderFilter, type PriceRange } from "@/components/filter-sidebar";
 import { ProductCard } from "@/components/product-card";
 import { ChevronDownIcon, CloseIcon } from "@/components/icons";
+import { PromotedListingsPanel } from "@/components/promoted-listings-panel";
 import type { Product, ShoeType, ShoeMaterial } from "@/types";
 import { getSeller } from "@/data/sellers";
 
@@ -20,9 +21,10 @@ interface CollectionViewProps {
   products: Product[];
   collectionName: string;
   initialSellerSlug?: string;
+  showPromotedListings?: boolean;
 }
 
-export function CollectionView({ products, collectionName, initialSellerSlug }: CollectionViewProps) {
+export function CollectionView({ products, collectionName, initialSellerSlug, showPromotedListings }: CollectionViewProps) {
   const [gender, setGender] = useState<GenderFilter>("all");
   const [sort, setSort] = useState<SortOption>("featured");
   const [priceRange, setPriceRange] = useState<PriceRange>("all");
@@ -34,6 +36,8 @@ export function CollectionView({ products, collectionName, initialSellerSlug }: 
   );
   const [sortOpen, setSortOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"buyer" | "seller">("buyer");
+  const [promotedProductId, setPromotedProductId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let result = products;
@@ -179,37 +183,73 @@ export function CollectionView({ products, collectionName, initialSellerSlug }: 
               </p>
             </div>
 
-            {/* Sort dropdown */}
-            <div className="relative hidden sm:block">
-              <button
-                onClick={() => setSortOpen(!sortOpen)}
-                className="flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.5px] text-charcoal hover:opacity-60 transition-opacity"
-              >
-                {sortLabels[sort]}
-                <ChevronDownIcon className="h-3 w-3" />
-              </button>
-              {sortOpen && (
-                <div className="absolute right-0 top-full mt-2 bg-white border border-black/10 shadow-lg rounded z-30 min-w-[180px]">
-                  {(Object.keys(sortLabels) as SortOption[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setSort(s);
-                        setSortOpen(false);
-                      }}
-                      className={`block w-full text-left px-4 py-2.5 text-[12px] tracking-wide transition-colors ${
-                        sort === s
-                          ? "bg-cream font-medium text-charcoal"
-                          : "text-warm-gray hover:bg-cream-light hover:text-charcoal"
-                      }`}
-                    >
-                      {sortLabels[s]}
-                    </button>
-                  ))}
+            <div className="flex items-center gap-3">
+              {/* Buyer / Seller toggle */}
+              {showPromotedListings && (
+                <div className="flex items-center bg-white border border-black/12 rounded-full p-0.5 gap-0.5">
+                  <button
+                    onClick={() => setViewMode("buyer")}
+                    className={`px-3.5 py-1.5 rounded-full text-[11px] font-medium uppercase tracking-wider transition-all ${
+                      viewMode === "buyer"
+                        ? "bg-charcoal text-white shadow-sm"
+                        : "text-warm-gray hover:text-charcoal"
+                    }`}
+                  >
+                    Buyer view
+                  </button>
+                  <button
+                    onClick={() => setViewMode("seller")}
+                    className={`px-3.5 py-1.5 rounded-full text-[11px] font-medium uppercase tracking-wider transition-all ${
+                      viewMode === "seller"
+                        ? "bg-charcoal text-white shadow-sm"
+                        : "text-warm-gray hover:text-charcoal"
+                    }`}
+                  >
+                    Seller view
+                  </button>
                 </div>
               )}
+
+              {/* Sort dropdown */}
+              <div className="relative hidden sm:block">
+                <button
+                  onClick={() => setSortOpen(!sortOpen)}
+                  className="flex items-center gap-1.5 text-[12px] font-medium uppercase tracking-[0.5px] text-charcoal hover:opacity-60 transition-opacity"
+                >
+                  {sortLabels[sort]}
+                  <ChevronDownIcon className="h-3 w-3" />
+                </button>
+                {sortOpen && (
+                  <div className="absolute right-0 top-full mt-2 bg-white border border-black/10 shadow-lg rounded z-30 min-w-[180px]">
+                    {(Object.keys(sortLabels) as SortOption[]).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          setSort(s);
+                          setSortOpen(false);
+                        }}
+                        className={`block w-full text-left px-4 py-2.5 text-[12px] tracking-wide transition-colors ${
+                          sort === s
+                            ? "bg-cream font-medium text-charcoal"
+                            : "text-warm-gray hover:bg-cream-light hover:text-charcoal"
+                        }`}
+                      >
+                        {sortLabels[s]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Promoted Listings panel — seller view only */}
+          {showPromotedListings && viewMode === "seller" && (
+            <PromotedListingsPanel
+              products={filtered.length > 0 ? filtered : products}
+              onPromotedProductChange={setPromotedProductId}
+            />
+          )}
 
           {/* Seller header strip */}
           {sellerSlugs.length === 1 && (() => {
@@ -246,7 +286,14 @@ export function CollectionView({ products, collectionName, initialSellerSlug }: 
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-8">
               {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <div key={product.id} className="relative">
+                  {showPromotedListings && viewMode === "seller" && product.id === promotedProductId && (
+                    <div className="absolute -top-2 -left-2 z-20 bg-amber-400 text-white text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
+                      Sponsored
+                    </div>
+                  )}
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
           )}

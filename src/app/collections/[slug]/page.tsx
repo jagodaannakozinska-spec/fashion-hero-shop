@@ -47,6 +47,7 @@ export default async function CollectionPage({ params, searchParams }: PageProps
         products={products}
         collectionName={collection.name}
         initialSellerSlug={seller}
+        showPromotedListings={slug === "womens"}
       />
     </>
   );
